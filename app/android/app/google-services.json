@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "765453437942",
+    "project_id": "vepiot",
+    "storage_bucket": "vepiot.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:765453437942:android:6388eac16f1a81648395d7",
+        "android_client_info": {
+          "package_name": "com.vepiot.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "765453437942-8o88lqsrvt1fn9ebp8v1g39hc67osh5a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUquRFg3O7Bw0G7uX1thLhqC0G7pcdrbQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "765453437942-8o88lqsrvt1fn9ebp8v1g39hc67osh5a.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "765453437942-00ima5q7tcqapq8vrj3na1a43i2l9d3u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.vepiot.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

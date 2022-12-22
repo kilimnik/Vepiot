@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package api.v1;
+
+enum TOTPResponseType {
+  TOTP_RESPONSE_TYPE_UNSPECIFIED = 0;
+  TOTP_RESPONSE_TYPE_ALLOW = 1;
+  TOTP_RESPONSE_TYPE_DENY = 2;
+}
+
+message TOTPResponse {
+  TOTPResponseType type = 1;
+  string id = 2;
+  string totp_code = 3;
+  string device_id = 4;
+  string name = 5;
+}
+
+message SendTOTPRequest {
+  TOTPResponse response = 1;
+}
+
+message SendTOTPResponse {}
+
+message GetTOTPRequest {
+  string id = 1;
+}
+
+message GetTOTPResponse {
+  TOTPResponse response = 1;
+}
+
+service Service {
+  rpc SendTOTP(SendTOTPRequest) returns (SendTOTPResponse) {}
+  rpc GetTOTP(GetTOTPRequest) returns (GetTOTPResponse) {}
+}
+
+
+enum TOTPRequestType {
+  TOTP_REQUEST_TYPE_UNSPECIFIED = 0;
+  TOTP_REQUEST_TYPE_REQUEST = 1;
+  TOTP_REQUEST_TYPE_RESPONSE = 2;
+  TOTP_REQUEST_TYPE_CANCEL= 3;
+}
+
+message TOTPRequest {
+  TOTPRequestType type = 1;
+  string id = 2;
+  string name = 3;
+  TOTPResponseType response_type = 4;
+}

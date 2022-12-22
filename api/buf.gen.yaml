@@ -1,0 +1,24 @@
+version: v1
+plugins:
+  - name: go
+    out: ../auth_proxy/gen
+    opt: 
+      - paths=source_relative
+      - Mapi/v1/api.proto=github.com/kilimnik/vepiot/auth_proxy/gen/api/v1
+  - name: connect-go
+    out: ../auth_proxy/gen
+    opt: 
+      - paths=source_relative
+      - Mapi/v1/api.proto=github.com/kilimnik/vepiot/auth_proxy/gen/api/v1
+  - name: go
+    out: ../vault_plugin/gen
+    opt: 
+      - paths=source_relative
+      - Mapi/v1/api.proto=github.com/kilimnik/vepiot/vault_plugin/gen/api/v1
+  - name: connect-go
+    out: ../vault_plugin/gen
+    opt: 
+      - paths=source_relative
+      - Mapi/v1/api.proto=github.com/kilimnik/vepiot/vault_plugin/gen/api/v1
+  - plugin: buf.build/protocolbuffers/dart
+    out: ../app/lib/gen
