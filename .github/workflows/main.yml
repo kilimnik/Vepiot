@@ -1,0 +1,51 @@
+name: Build and Release
+
+on:
+  push:
+    branches: ["main"]
+
+# Declare default permissions as read only.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: "0"
+
+      - uses: actions/setup-java@v3
+        with:
+          java-version: "11.x"
+          distribution: temurin
+
+      - run: flutter pub get
+        working-directory: ./app
+
+      # Currenly no tests :(
+      # - run: flutter test
+      #   working-directory: ./app
+
+      - run: flutter build apk --release
+        working-directory: ./app
+
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.61.0
+        id: tagger
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+
+      - name: Push APK to Releases
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "app/build/app/outputs/flutter-apk/app-release.apk"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.tagger.outputs.new_tag }}
