@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build APK
+    name: Build and Release
     runs-on: ubuntu-latest
     steps:
       - uses: subosito/flutter-action@v2
@@ -36,6 +36,9 @@ jobs:
       - run: flutter build apk --release
         working-directory: ./app
 
+      - run: flutter build appbundle --release
+        working-directory: ./app
+
       - name: Bump version and push tag
         uses: anothrNick/github-tag-action@1.61.0
         id: tagger
@@ -43,9 +46,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
 
-      - name: Push APK to Releases
+      - name: Push Release
         uses: softprops/action-gh-release@v1
         with:
-          files: "app/build/app/outputs/flutter-apk/app-release.apk"
+          files: |
+            app/build/app/outputs/flutter-apk/app-release.apk
+            app/build/app/outputs/bundle/release/app-release.aab
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ steps.tagger.outputs.new_tag }}
