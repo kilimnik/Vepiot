@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'package:vepiot/scanner.dart';
 import 'package:vepiot/storage.dart';
 import 'package:vepiot/unlock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
-import 'package:barcode_scan2/barcode_scan2.dart';
 import 'auth.dart';
 import 'config.dart';
 import 'fcm.dart';
@@ -104,25 +104,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Future scan() async {
-    ScanResult result = await BarcodeScanner.scan();
-    String uri = result.rawContent;
-
-    var errorMessage = "";
-
-    try {
-      OTP otp = OTP.createOTP(uri);
-      setState(() => StorageService.OTPs.value[otp.username] = otp);
-      await StorageService.writeOTP();
-    } on FormatException catch (e) {
-      errorMessage = e.message;
-    }
-
-    if (errorMessage.isNotEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(errorMessage),
-      ));
-    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ScanScreen()),
+    );
   }
 
   Future<void> handleClick(String value) async {
