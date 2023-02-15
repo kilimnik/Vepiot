@@ -24,6 +24,10 @@ Firebase->>Mobile Devices: Login to Vault_X accepted.
 Note right of Vault: Login Accepted
 ```
 
+# Privacy Policy
+
+Vepiot does not collect any information about you. The only information that is transferred are the unlock requests and results via firebase. No secrets are ever transferred to any server you did not configure.
+
 ## TODO:
 * CI/CD
 * More secure device registration
