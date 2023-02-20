@@ -35,12 +35,18 @@ jobs:
           WITH_V: true
           DEFAULT_BUMP: patch
 
-      - run: echo $KEY_JKS | base64 --decode > ../keys/key.jks && sha256sum ../keys/key.jks && echo $KEY_JKS | sha256sum && echo $KEY_JKS | wc -c && flutter build apk && flutter build appbundle
+      - run: echo $KEY_JKS | base64 --decode > ../keys/key.jks && flutter build apk && flutter build appbundle
         working-directory: ./app
         env:
           KEY_JKS: ${{ secrets.KEY_JKS }}
           KEY_PASSWORD: ${{ secrets.ALIAS_PASSWORD }}
           ALIAS_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERSION: ${{ steps.tagger.outputs.new_tag }}
+
+      - run: fastlane android deploy
+        working-directory: ./app
+        env:
+          GOOGLE_JSON_KEY: ${{ secrets.GOOGLE_JSON_KEY }}
           VERSION: ${{ steps.tagger.outputs.new_tag }}
 
       - name: Push Release
