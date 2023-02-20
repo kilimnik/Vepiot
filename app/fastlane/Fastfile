@@ -1,0 +1,37 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:android)
+
+platform :android do
+  lane :build do
+    desc "Build apk and aab"
+
+    sh(command: "flutter build appbundle")
+    sh(command: "flutter build apk")
+  end
+
+  lane :deploy do
+    desc "Deploy a build app bundle to Google Play"
+
+    upload_to_play_store(
+        package_name: "com.vepiot.app",
+        json_key_data: ENV['GOOGLE_JSON_KEY'],    
+        aab: "build/app/outputs/bundle/release/app-release.aab",
+        rollout: "1",
+        version_name: ENV['VERSION']
+      )
+  end
+end

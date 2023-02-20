@@ -11,14 +11,28 @@ if (flutterRoot == null) {
     throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
 }
 
-def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-if (flutterVersionCode == null) {
-    flutterVersionCode = '1'
-}
-
-def flutterVersionName = localProperties.getProperty('flutter.versionName')
+def flutterVersionName = System.getenv('VERSION')
+def flutterVersionCode = '1'
 if (flutterVersionName == null) {
     flutterVersionName = '1.0'
+}
+else 
+{
+    if (flutterVersionName[0] == "v") {
+        flutterVersionName = flutterVersionName.substring(1);
+    }
+    
+    String[] versionSplit = flutterVersionName.split(/\./);
+
+    flutterVersionCode = versionSplit.collect { element ->
+        Integer.parseInt(element);
+    }.withIndex().collect { element, index ->
+        if (element >> 10 != 0) {
+            throw new Exception('unsupported version format')
+        }
+
+        element << (10 * index);
+    }.sum();
 }
 
 apply plugin: 'com.android.application'
@@ -59,11 +73,18 @@ android {
         multiDexEnabled true
     }
 
+    signingConfigs {
+        release {
+            storeFile file("../../../keys/key.jks")
+            keyAlias = "vepiot_release"
+            storePassword = System.getenv('KEY_PASSWORD')
+            keyPassword = System.getenv('ALIAS_PASSWORD')
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
     }
 }
