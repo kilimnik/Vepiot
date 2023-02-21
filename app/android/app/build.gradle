@@ -26,7 +26,7 @@ else
 
     flutterVersionCode = versionSplit.collect { element ->
         Integer.parseInt(element);
-    }.withIndex().collect { element, index ->
+    }.reverse().withIndex().collect { element, index ->
         if (element >> 10 != 0) {
             throw new Exception('unsupported version format')
         }
