@@ -32,7 +32,7 @@ else
         }
 
         element << (10 * index);
-    }.sum();
+    }.sum() + 3145728; // Needed offset because of early uppsi wuppsi
 }
 
 apply plugin: 'com.android.application'
