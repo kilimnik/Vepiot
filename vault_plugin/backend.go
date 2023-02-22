@@ -3,6 +3,7 @@ package auth
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,14 +25,16 @@ import (
 	"google.golang.org/api/option"
 )
 
+//go:embed firebase_key.json
+var FirebaseKey []byte
+
 type User struct {
 	Secret string
 }
 
 type Auth struct {
-	Policies       []string
-	ServiceAccount string
-	Users          map[string]*User
+	Policies []string
+	Users    map[string]*User
 }
 
 // backend wraps the backend framework and adds a map for storing key value pairs.
@@ -117,7 +120,7 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 	}
 
 	opts := []option.ClientOption{
-		option.WithCredentialsJSON([]byte(auth.ServiceAccount)),
+		option.WithCredentialsJSON(FirebaseKey),
 	}
 	app, err := firebase.NewApp(context.Background(), nil, opts...)
 	if err != nil {
@@ -305,11 +308,6 @@ func (b *backend) pathAuths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: "Specifies the auth name",
 				},
-				"service_account": {
-					Required:    true,
-					Type:        framework.TypeString,
-					Description: "Specifies the firebase service account used to push cloud messages",
-				},
 				"policies": {
 					Required:    true,
 					Type:        framework.TypeCommaStringSlice,
@@ -377,11 +375,6 @@ func (b *backend) handleAuthWrite(ctx context.Context, req *logical.Request, dat
 		return logical.ErrorResponse("'name': name must be provided"), nil
 	}
 
-	serviceAccount := data.Get("service_account").(string)
-	if serviceAccount == "" {
-		return logical.ErrorResponse("'service_account': service account must be provided"), nil
-	}
-
 	policies := policyutil.ParsePolicies(data.Get("policies"))
 	if len(policies) == 0 {
 		return logical.ErrorResponse("'policies': at least one policy must be provided"), nil
@@ -414,9 +407,8 @@ func (b *backend) handleAuthWrite(ctx context.Context, req *logical.Request, dat
 	}
 
 	b.auths[name] = &Auth{
-		Policies:       policies,
-		ServiceAccount: serviceAccount,
-		Users:          users,
+		Policies: policies,
+		Users:    users,
 	}
 
 	resp := &logical.Response{
