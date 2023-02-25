@@ -21,7 +21,7 @@ start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./vault/plugins
 
 enable:
-	vault auth enable -path=vepiot_vault vepiot
+	vault auth enable -path=vepiot_vault vepiot_vault
 
 clean:
 	rm -f ./vault/plugins/vepiot_vault
