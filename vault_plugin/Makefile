@@ -15,16 +15,16 @@ endif
 all: fmt build start
 
 build:
-	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o vault/plugins/vepiot cmd/vepiot/main.go
+	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o vault/plugins/vepiot_vault cmd/vepiot/main.go
 
 start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./vault/plugins
 
 enable:
-	vault auth enable -path=vepiot vepiot
+	vault auth enable -path=vepiot_vault vepiot
 
 clean:
-	rm -f ./vault/plugins/vepiot
+	rm -f ./vault/plugins/vepiot_vault
 
 fmt:
 	go fmt $$(go list ./...)

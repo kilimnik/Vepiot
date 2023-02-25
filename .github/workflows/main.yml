@@ -60,6 +60,10 @@ jobs:
         run: go build -v
         working-directory: ./auth_proxy
 
+      - name: Build Vault Plugin
+        run: make build
+        working-directory: ./vault_plugin
+
       - name: Push Release
         uses: softprops/action-gh-release@v1
         with:
@@ -67,6 +71,7 @@ jobs:
             app/build/app/outputs/flutter-apk/app-release.apk
             app/build/app/outputs/bundle/release/app-release.aab
             auth_proxy/auth_proxy
+            vault_plugin/vault/plugins/vepiot_vault
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ steps.tagger.outputs.new_tag }}
           fail_on_unmatched_files: true
