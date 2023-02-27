@@ -3,7 +3,9 @@ package auth
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -41,7 +43,8 @@ type Auth struct {
 type backend struct {
 	*framework.Backend
 
-	auths map[string]*Auth
+	auths  map[string]*Auth
+	tokens map[string]*string
 }
 
 var _ logical.Factory = Factory
@@ -66,7 +69,8 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 func newBackend() (*backend, error) {
 	b := &backend{
-		auths: make(map[string]*Auth),
+		auths:  make(map[string]*Auth),
+		tokens: make(map[string]*string),
 	}
 
 	b.Backend = &framework.Backend{
@@ -82,6 +86,7 @@ func newBackend() (*backend, error) {
 				b.pathLogin(),
 				b.pathAuthsList(),
 			},
+			b.pathTokens(),
 			b.pathAuths(),
 		),
 	}
@@ -92,23 +97,101 @@ func newBackend() (*backend, error) {
 func (b *backend) pathLogin() *framework.Path {
 	return &framework.Path{
 		Pattern: "login$",
+
 		Fields: map[string]*framework.FieldSchema{
+			"token": {
+				Required:    true,
+				Type:        framework.TypeString,
+				Description: "Internal Token retrieved by token operation",
+			},
 			"name": {
 				Required:    true,
 				Type:        framework.TypeString,
-				Description: "Auth name to login",
+				Description: "Auth name",
 			},
 		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.handleLogin,
-				Summary:  "Log in using auth method",
+				Summary:  "Retrieve vault token",
 			},
 		},
 	}
 }
 
 func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	token := data.Get("token").(string)
+	if token == "" {
+		return logical.ErrorResponse("token must be provided"), nil
+	}
+
+	name := data.Get("name").(string)
+	if name == "" {
+		return logical.ErrorResponse("name must be provided"), nil
+	}
+
+	auth, ok := b.auths[name]
+	if !ok {
+		return nil, logical.ErrPermissionDenied
+	}
+
+	val, ok := b.tokens[name]
+	if !ok {
+		return nil, logical.ErrInvalidRequest
+	}
+
+	if subtle.ConstantTimeCompare([]byte(token), []byte(*val)) != 1 {
+		return nil, logical.ErrPermissionDenied
+	}
+
+	delete(b.tokens, name)
+
+	// Compose the response
+	resp := &logical.Response{
+		Auth: &logical.Auth{
+			// Policies can be passed in as a parameter to the request
+			Policies: auth.Policies,
+			Metadata: map[string]string{
+				"name": name,
+			},
+			// Lease options can be passed in as parameters to the request
+			LeaseOptions: logical.LeaseOptions{
+				TTL:       30 * time.Second,
+				MaxTTL:    15 * time.Minute,
+				Renewable: false,
+			},
+		},
+	}
+
+	return resp, nil
+}
+
+func (b *backend) pathTokens() []*framework.Path {
+	return []*framework.Path{
+		{
+			Pattern: "token/" + framework.GenericNameRegex("name"),
+
+			Fields: map[string]*framework.FieldSchema{
+				"name": {
+					Required:    true,
+					Type:        framework.TypeString,
+					Description: "Auth name to gernate token for",
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleToken,
+					Summary:  "Generate token to use during login",
+				},
+			},
+
+			ExistenceCheck: b.handleExistenceCheck,
+		},
+	}
+}
+
+func (b *backend) handleToken(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	name := data.Get("name").(string)
 	if name == "" {
 		return logical.ErrorResponse("name must be provided"), nil
@@ -182,24 +265,23 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 		return logialErr, err
 	}
 
-	// Compose the response
+	// Generate new internal token
+	rand := make([]byte, 64)
+	n, err := b.GetRandomReader().Read(rand)
+	if err != nil {
+		return nil, err
+	}
+
+	if n != len(rand) {
+		return logical.ErrorResponse("Random returned too few bytes"), nil
+	}
+
+	token := base64.StdEncoding.EncodeToString(rand)
+	b.tokens[name] = &token
+
 	resp := &logical.Response{
-		Auth: &logical.Auth{
-			InternalData: map[string]interface{}{
-				"totp": response.GetResponse().GetTotpCode(),
-			},
-			// Policies can be passed in as a parameter to the request
-			Policies: auth.Policies,
-			Metadata: map[string]string{
-				"name": name,
-				"user": response.GetResponse().GetDeviceId(),
-			},
-			// Lease options can be passed in as parameters to the request
-			LeaseOptions: logical.LeaseOptions{
-				TTL:       30 * time.Second,
-				MaxTTL:    15 * time.Minute,
-				Renewable: false,
-			},
+		Data: map[string]interface{}{
+			"token": token,
 		},
 	}
 
@@ -300,7 +382,7 @@ func RetrieveTOTP(
 func (b *backend) pathAuths() []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: "auths/" + framework.GenericNameRegex("name"),
+			Pattern: "auth/" + framework.GenericNameRegex("name"),
 
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
@@ -392,6 +474,7 @@ func (b *backend) handleAuthWrite(ctx context.Context, req *logical.Request, dat
 		key, err := totp.Generate(totp.GenerateOpts{
 			Issuer:      "Vepiot Vault",
 			AccountName: name,
+			Rand:        b.GetRandomReader(),
 		})
 		if err != nil {
 			return nil, err
@@ -426,6 +509,7 @@ func (b *backend) handleAuthDelete(ctx context.Context, req *logical.Request, da
 
 	// Remove entry for specified path
 	delete(b.auths, name)
+	delete(b.tokens, name)
 
 	return nil, nil
 }
