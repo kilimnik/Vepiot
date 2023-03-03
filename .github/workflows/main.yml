@@ -64,7 +64,7 @@ jobs:
 
       - run: fastlane android deploy
         working-directory: ./app
-        if: needs.pre_job.outputs.should_skip != 'true' || !fromJSON(needs.pre_job.outputs.paths_result).app.should_skip
+        if: needs.pre_job.outputs.should_skip == 'true' || fromJSON(needs.pre_job.outputs.paths_result).app.should_skip
         env:
           GOOGLE_JSON_KEY: ${{ secrets.GOOGLE_JSON_KEY }}
           VERSION: ${{ steps.tagger.outputs.new_tag }}
