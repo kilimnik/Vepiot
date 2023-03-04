@@ -1,18 +1,13 @@
 {
   inputs = {
-    nixpkgs-master.url = "github:nixos/nixpkgs/master";
-    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, flake-utils, nixpkgs-unstable, nixpkgs-master, ... }@inputs:
+  outputs = { self, flake-utils, nixpkgs, ... }@inputs:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs-master = nixpkgs-master.legacyPackages.${system}.appendOverlays [
-
-        ];
-
-        pkgs = import nixpkgs-unstable ({
+        pkgs = import nixpkgs ({
           inherit system;
 
           overlays = [
@@ -23,6 +18,22 @@
 
       in
       {
+        packages = {
+          auth_proxy = pkgs.buildGoModule rec {
+            name = "auth_proxy";
+
+            src = ./auth_proxy;
+
+            vendorHash = "sha256-skp304q/dO1cBH6LIlrSg1rAoALtOK1wtweC0LJRPyI=";
+          };
+          vault_plugin = pkgs.buildGoModule rec {
+            name = "vault_plugin";
+
+            src = ./vault_plugin;
+
+            vendorHash = "sha256-/6aE5w6Rki1ZIXMX9Ryo4XrGzS/01xZQiWDUROriixs=";
+          };
+        };
         devShell = pkgs.pkgs.mkShell {
 
           buildInputs = with pkgs;
@@ -34,7 +45,7 @@
               cmake
               vault-bin
               protoc-gen-go
-              pkgs-master.protoc-gen-connect-go
+              pkgs.protoc-gen-connect-go
             ];
           shellHook = ''
             export CFLAGS="-I${pkgs.glibc.dev}/include"
