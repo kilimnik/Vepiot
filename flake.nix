@@ -31,7 +31,7 @@
 
               src = ./vault_plugin;
 
-              vendorHash = "sha256-/6aE5w6Rki1ZIXMX9Ryo4XrGzS/01xZQiWDUROriixs=";
+              vendorHash = "sha256-1uGPhzCk9b0tJNz08S/3QQ8ceuppajn796zQ4glYXeQ=";
             };
           };
 
@@ -51,6 +51,7 @@
                 vault-bin
                 protoc-gen-go
                 pkgs.protoc-gen-connect-go
+                terraform
               ];
             shellHook = ''
               export CFLAGS="-I${pkgs.glibc.dev}/include"
