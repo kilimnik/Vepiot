@@ -18,7 +18,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/google/uuid"
 	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/policyutil"
+	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	api_v1 "github.com/kilimnik/vepiot/vault_plugin/gen/api/v1"
 	"github.com/kilimnik/vepiot/vault_plugin/gen/api/v1/v1connect"
@@ -35,8 +35,9 @@ type User struct {
 }
 
 type Auth struct {
-	Policies []string
-	Users    map[string]*User
+	tokenutil.TokenParams
+
+	Users map[string]*User
 }
 
 // backend wraps the backend framework and adds a map for storing key value pairs.
@@ -151,18 +152,13 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 	resp := &logical.Response{
 		Auth: &logical.Auth{
 			// Policies can be passed in as a parameter to the request
-			Policies: auth.Policies,
 			Metadata: map[string]string{
 				"name": name,
 			},
-			// Lease options can be passed in as parameters to the request
-			LeaseOptions: logical.LeaseOptions{
-				TTL:       30 * time.Second,
-				MaxTTL:    15 * time.Minute,
-				Renewable: false,
-			},
 		},
 	}
+
+	auth.PopulateTokenAuth(resp.Auth)
 
 	return resp, nil
 }
@@ -380,27 +376,26 @@ func RetrieveTOTP(
 }
 
 func (b *backend) pathAuths() []*framework.Path {
-	return []*framework.Path{
+	fields := map[string]*framework.FieldSchema{
+		"name": {
+			Required:    true,
+			Type:        framework.TypeString,
+			Description: "Specifies the auth name",
+		},
+		"firebase_device_ids": {
+			Required:    true,
+			Type:        framework.TypeCommaStringSlice,
+			Description: "Specifies the device ids to send the notification to",
+		},
+	}
+
+	tokenutil.AddTokenFields(fields)
+
+	p := []*framework.Path{
 		{
 			Pattern: "auth/" + framework.GenericNameRegex("name"),
 
-			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Required:    true,
-					Type:        framework.TypeString,
-					Description: "Specifies the auth name",
-				},
-				"policies": {
-					Required:    true,
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Specifies the policies",
-				},
-				"firebase_device_ids": {
-					Required:    true,
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Specifies the device ids to send the notification to",
-				},
-			},
+			Fields: fields,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
@@ -416,6 +411,8 @@ func (b *backend) pathAuths() []*framework.Path {
 			ExistenceCheck: b.handleExistenceCheck,
 		},
 	}
+
+	return p
 }
 
 func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
@@ -457,11 +454,6 @@ func (b *backend) handleAuthWrite(ctx context.Context, req *logical.Request, dat
 		return logical.ErrorResponse("'name': name must be provided"), nil
 	}
 
-	policies := policyutil.ParsePolicies(data.Get("policies"))
-	if len(policies) == 0 {
-		return logical.ErrorResponse("'policies': at least one policy must be provided"), nil
-	}
-
 	firebaseDeviceIds := ParseList(data.Get("firebase_device_ids"))
 	if len(firebaseDeviceIds) == 0 {
 		return logical.ErrorResponse("'firebase_device_ids': at least one firebase device id must be provided"), nil
@@ -489,10 +481,16 @@ func (b *backend) handleAuthWrite(ctx context.Context, req *logical.Request, dat
 		totpQrCodes[device] = ".\n" + buf.String()
 	}
 
-	b.auths[name] = &Auth{
-		Policies: policies,
-		Users:    users,
+	auth := Auth{
+		Users: users,
 	}
+
+	// Get tokenutil fields
+	if err := auth.ParseTokenFields(req, data); err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+	}
+
+	b.auths[name] = &auth
 
 	resp := &logical.Response{
 		Data: totpQrCodes,
